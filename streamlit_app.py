@@ -326,18 +326,24 @@ def load_comprehensive_enterprise_data():
         'BCO': {
             'name': 'Back Office Cloud Operations Team',
             'current_size': 6,  # User can modify this
-            'location': 'India',
+            'location': 'India & USA',
+            'india_size': 4,  # 24x7 operations
+            'usa_size': 2,   # Business hours support
             'cost_center': 'CC-002',
             'manager': 'Sarah Johnson',
-            'specializations': ['Cloud Operations', 'Monitoring', 'Support']
+            'specializations': ['Cloud Operations', 'Monitoring', 'Support'],
+            'operations_model': '24x7 (India) + Business Hours (USA)'
         },
         'DBO': {
             'name': 'Database Operations Team',
             'current_size': 7,  # User can modify this
-            'location': 'USA',
+            'location': 'India & USA',
+            'india_size': 4,  # 24x7 operations
+            'usa_size': 3,   # Business hours + on-call
             'cost_center': 'CC-005',
             'manager': 'Robert Wilson',
-            'specializations': ['Database Management', 'Performance Tuning', 'Backup & Recovery']
+            'specializations': ['Database Management', 'Performance Tuning', 'Backup & Recovery'],
+            'operations_model': '24x7 (India) + Business Hours (USA)'
         }
     }
     
@@ -500,8 +506,75 @@ def load_comprehensive_enterprise_data():
     
     return teams, categories
 
-def calculate_comprehensive_financial_model(investment_params, business_params, risk_params, timeline_years=5):
-    """Calculate comprehensive financial model with multiple scenarios"""
+def calculate_infrastructure_based_resources(infrastructure_data, team_sizes):
+    """Calculate resource requirements based on actual AWS infrastructure"""
+    
+    # Resource calculation coefficients (hours per month per service)
+    resource_coefficients = {
+        'applications': 2.5,  # 2.5 hours per application per month
+        'applications_ec2': 4.0,  # Additional 4 hours for EC2-based apps
+        'applications_eks': 6.0,  # Additional 6 hours for EKS apps
+        'custom_applications': 8.0,  # 8 hours for custom apps (more complex)
+        'paas_databases': 3.0,  # 3 hours per PaaS database
+        'databases_ec2': 8.0,  # 8 hours for EC2 databases (more maintenance)
+        's3_buckets': 0.5,  # 0.5 hours per S3 bucket
+        'lambda_functions': 1.0,  # 1 hour per Lambda function
+        'api_gateways': 2.0,  # 2 hours per API Gateway
+        'ecr_repositories': 1.5,  # 1.5 hours per ECR repository
+        'environments': 10.0  # 10 hours per environment (deployment, monitoring)
+    }
+    
+    # Calculate total monthly hours needed
+    total_monthly_hours = 0
+    detailed_breakdown = {}
+    
+    for service, count in infrastructure_data.items():
+        if service in resource_coefficients:
+            service_hours = count * resource_coefficients[service]
+            total_monthly_hours += service_hours
+            detailed_breakdown[service] = {
+                'count': count,
+                'hours_per_unit': resource_coefficients[service],
+                'total_hours': service_hours
+            }
+    
+    # Account for 24x7 operations (India team advantage)
+    # India team can cover 24x7, reducing incident response time and improving coverage
+    coverage_efficiency = 1.3  # 30% more efficient with 24x7 coverage
+    adjusted_hours = total_monthly_hours / coverage_efficiency
+    
+    # Convert to FTE requirements (assuming 160 working hours per month per FTE)
+    working_hours_per_fte = 160
+    required_fte = adjusted_hours / working_hours_per_fte
+    
+    # Calculate team distribution
+    total_current_fte = team_sizes['BCO'] + team_sizes['DBO']
+    
+    # Suggested optimal distribution based on workload
+    bco_workload_percentage = 0.6  # 60% of infrastructure work is BCO-related
+    dbo_workload_percentage = 0.4  # 40% is database-related
+    
+    optimal_bco_fte = required_fte * bco_workload_percentage
+    optimal_dbo_fte = required_fte * dbo_workload_percentage
+    
+    return {
+        'total_infrastructure_hours': total_monthly_hours,
+        'adjusted_hours_24x7': adjusted_hours,
+        'required_total_fte': required_fte,
+        'current_total_fte': total_current_fte,
+        'fte_gap': required_fte - total_current_fte,
+        'optimal_bco_fte': optimal_bco_fte,
+        'optimal_dbo_fte': optimal_dbo_fte,
+        'current_bco_fte': team_sizes['BCO'],
+        'current_dbo_fte': team_sizes['DBO'],
+        'bco_fte_gap': optimal_bco_fte - team_sizes['BCO'],
+        'dbo_fte_gap': optimal_dbo_fte - team_sizes['DBO'],
+        'coverage_efficiency_factor': coverage_efficiency,
+        'detailed_breakdown': detailed_breakdown
+    }
+
+def calculate_comprehensive_financial_model(investment_params, business_params, risk_params, infrastructure_analysis, timeline_years=5):
+    """Calculate comprehensive financial model with infrastructure-based calculations"""
     
     # Extract parameters
     avg_fte_cost = investment_params['avg_fte_cost']
@@ -516,6 +589,10 @@ def calculate_comprehensive_financial_model(investment_params, business_params, 
     implementation_risk = risk_params['implementation_risk']
     market_volatility = risk_params['market_volatility']
     
+    # Use infrastructure-based calculations
+    current_total_fte = infrastructure_analysis['current_total_fte']
+    infrastructure_hours = infrastructure_analysis['total_infrastructure_hours']
+    
     # Calculate year-over-year financial model
     financial_model = []
     cumulative_investment = 0
@@ -527,38 +604,53 @@ def calculate_comprehensive_financial_model(investment_params, business_params, 
         if year == 0:
             annual_investment = automation_capex + annual_opex + training_budget
         else:
-            # OPEX grows with inflation and expansion
-            annual_opex_adjusted = annual_opex * (1.05 ** year) * (1 + revenue_growth/200)
+            # OPEX grows with infrastructure growth and inflation
+            infrastructure_growth = 1.15 ** year  # 15% annual infrastructure growth
+            annual_opex_adjusted = annual_opex * (1.05 ** year) * infrastructure_growth
             annual_investment = annual_opex_adjusted + training_budget * (1.03 ** year)
         
-        # Multi-dimensional savings calculation
+        # Multi-dimensional savings calculation based on actual infrastructure
         
-        # 1. Direct FTE cost avoidance
-        current_total_fte = st.session_state.teams['BCO']['current_size'] + st.session_state.teams['DBO']['current_size']
-        base_team_growth = current_total_fte * (1.15 ** year)  # 15% annual growth without automation
-        automation_fte_reduction = base_team_growth * (0.05 + year * 0.08)  # Progressive automation
-        fte_cost_savings = automation_fte_reduction * avg_fte_cost
+        # 1. Direct FTE cost avoidance (based on infrastructure growth vs automation)
+        infrastructure_growth_factor = 1.15 ** year  # Infrastructure grows 15% annually
+        base_fte_need = (infrastructure_hours * infrastructure_growth_factor) / (160 * 12)  # Monthly hours to FTE
+        automation_reduction = min(0.4, year * 0.08)  # Progressive automation up to 40%
+        actual_fte_need = base_fte_need * (1 - automation_reduction)
+        fte_savings = (base_fte_need - actual_fte_need) * avg_fte_cost
         
-        # 2. Operational efficiency gains
+        # 2. 24x7 Operations efficiency gains (India advantage)
+        follow_sun_efficiency = infrastructure_hours * 0.15 * (1 + year * 0.05)  # 15% efficiency, growing
+        follow_sun_savings = (follow_sun_efficiency / 160) * avg_fte_cost / 12  # Monthly savings
+        
+        # 3. Infrastructure-specific savings
+        # EC2 automation savings
+        ec2_apps = infrastructure_analysis['detailed_breakdown'].get('applications_ec2', {}).get('count', 0)
+        ec2_savings = ec2_apps * 2000 * (1 + year * 0.2)  # $2K per EC2 app, growing
+        
+        # EKS automation savings  
+        eks_apps = infrastructure_analysis['detailed_breakdown'].get('applications_eks', {}).get('count', 0)
+        eks_savings = eks_apps * 3000 * (1 + year * 0.25)  # $3K per EKS app, growing
+        
+        # Database automation savings
+        db_total = (infrastructure_analysis['detailed_breakdown'].get('paas_databases', {}).get('count', 0) + 
+                   infrastructure_analysis['detailed_breakdown'].get('databases_ec2', {}).get('count', 0))
+        db_savings = db_total * 1500 * (1 + year * 0.3)  # $1.5K per database, growing
+        
+        # 4. Operational efficiency gains
         efficiency_multiplier = 1 + (year * 0.15)  # 15% annual efficiency improvement
         operational_savings = current_revenue * 1000 * (ops_impact/100) * efficiency_multiplier
         
-        # 3. Revenue impact from improved reliability
-        reliability_improvement = min(0.20, year * 0.04)  # Max 20% improvement
-        revenue_uplift = current_revenue * 1000 * 0.03 * reliability_improvement  # 3% revenue impact
+        # 5. Revenue impact from improved reliability (24x7 operations)
+        reliability_improvement = min(0.25, year * 0.05)  # Max 25% improvement with 24x7
+        revenue_uplift = current_revenue * 1000 * 0.03 * reliability_improvement
         
-        # 4. Risk avoidance and cost optimization
-        incident_cost_avoidance = (150 + year * 30) * 1000  # Avoided incident costs
-        compliance_savings = (75 + year * 25) * 1000  # Automated compliance savings
-        cloud_cost_optimization = (200 + year * 50) * 1000  # AWS cost optimization
+        # 6. Risk avoidance and incident reduction (24x7 coverage)
+        incident_cost_avoidance = (200 + year * 40) * 1000  # Higher savings with 24x7 coverage
         
-        # 5. Innovation and competitive advantage
-        innovation_value = current_revenue * 1000 * 0.02 * min(year * 0.3, 1.0)  # Innovation premium
+        total_savings = (fte_savings + follow_sun_savings * 12 + ec2_savings + 
+                        eks_savings + db_savings + operational_savings + incident_cost_avoidance)
         
-        total_savings = (fte_cost_savings + operational_savings + incident_cost_avoidance + 
-                        compliance_savings + cloud_cost_optimization)
-        
-        total_revenue_impact = revenue_uplift + innovation_value
+        total_revenue_impact = revenue_uplift
         
         # Apply risk adjustments
         risk_multiplier = (1 - implementation_risk * (1 - year * 0.1)) * (1 - market_volatility)
@@ -585,7 +677,9 @@ def calculate_comprehensive_financial_model(investment_params, business_params, 
         financial_model.append({
             'Year': 2025 + year,
             'Annual_Investment': risk_adjusted_investment,
-            'FTE_Savings': fte_cost_savings,
+            'FTE_Savings': fte_savings,
+            'Infrastructure_Savings': ec2_savings + eks_savings + db_savings,
+            'Follow_Sun_Savings': follow_sun_savings * 12,
             'Operational_Savings': operational_savings,
             'Revenue_Impact': risk_adjusted_revenue,
             'Total_Savings': risk_adjusted_savings,
@@ -597,7 +691,9 @@ def calculate_comprehensive_financial_model(investment_params, business_params, 
             'NPV_Contribution': npv_contribution,
             'ROI_Percentage': (cumulative_savings / cumulative_investment - 1) * 100 if cumulative_investment > 0 else 0,
             'IRR_Estimate': irr_annual,
-            'Payback_Achieved': cumulative_savings + cumulative_revenue_impact > cumulative_investment
+            'Payback_Achieved': cumulative_savings + cumulative_revenue_impact > cumulative_investment,
+            'Infrastructure_Growth_Factor': infrastructure_growth_factor,
+            'Automation_Reduction': automation_reduction
         })
     
     return pd.DataFrame(financial_model)
@@ -1450,70 +1546,242 @@ security_manager.audit_action("enterprise_user", f"accessed_tab")
 with tab1:
     st.header("Executive Strategic Overview & Key Performance Indicators")
     
-    # Resource input section
-    st.subheader("📝 Team Resource Configuration")
+    # Infrastructure Configuration Section
+    st.subheader("🏗️ AWS Infrastructure Configuration")
+    st.markdown("**Enter your current AWS infrastructure details for accurate resource planning:**")
     
-    col1, col2, col3 = st.columns([2, 2, 1])
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("**Back Office Cloud Operations (India)**")
-        bco_size = st.number_input("BCO Team Size", min_value=1, max_value=50, 
-                                   value=st.session_state.teams['BCO']['current_size'], 
-                                   key="bco_input")
-        
-        # Update session state
-        st.session_state.teams['BCO']['current_size'] = bco_size
+        st.markdown("**Applications & Compute**")
+        total_applications = st.number_input("1. Total number of applications", min_value=0, value=25, key="total_apps")
+        applications_ec2 = st.number_input("2. Applications with EC2", min_value=0, value=15, key="apps_ec2")
+        applications_eks = st.number_input("3. Applications on EKS Clusters", min_value=0, value=8, key="apps_eks")
+        custom_applications = st.number_input("4. Custom applications", min_value=0, value=12, key="custom_apps")
         
     with col2:
-        st.markdown("**Database Operations (USA)**")
-        dbo_size = st.number_input("DBO Team Size", min_value=1, max_value=50, 
-                                   value=st.session_state.teams['DBO']['current_size'],
-                                   key="dbo_input")
+        st.markdown("**Data & Storage**")
+        paas_databases = st.number_input("5. PaaS Databases (RDS, Aurora)", min_value=0, value=18, key="paas_db")
+        databases_ec2 = st.number_input("6. Databases on EC2", min_value=0, value=6, key="db_ec2")
+        s3_buckets = st.number_input("7. S3 buckets", min_value=0, value=45, key="s3_buckets")
+        ecr_repositories = st.number_input("11. ECR repositories", min_value=0, value=20, key="ecr_repos")
         
-        # Update session state
-        st.session_state.teams['DBO']['current_size'] = dbo_size
-    
     with col3:
-        current_total_fte = bco_size + dbo_size
-        st.metric("Total FTE", current_total_fte)
-        
-        # Update button
-        if st.button("🔄 Update Configuration"):
-            st.success("✅ Team configuration updated successfully!")
-            security_manager.audit_action("enterprise_user", "updated_team_configuration", 
-                                         f"BCO: {bco_size}, DBO: {dbo_size}")
+        st.markdown("**Serverless & API**")
+        lambda_functions = st.number_input("8. Lambda functions", min_value=0, value=35, key="lambda_funcs")
+        # Note: Item 9 was duplicate "Serverless PaaS: Lambda" - treating as Lambda layers or additional Lambda services
+        lambda_additional = st.number_input("9. Lambda layers/versions", min_value=0, value=15, key="lambda_additional")
+        api_gateways = st.number_input("10. API Gateways", min_value=0, value=8, key="api_gw")
+        total_environments = st.number_input("12. Total environments (Dev/Test/Prod)", min_value=1, value=9, key="environments")
+    
+    # Store infrastructure data
+    infrastructure_data = {
+        'applications': total_applications,
+        'applications_ec2': applications_ec2,
+        'applications_eks': applications_eks,
+        'custom_applications': custom_applications,
+        'paas_databases': paas_databases,
+        'databases_ec2': databases_ec2,
+        's3_buckets': s3_buckets,
+        'lambda_functions': lambda_functions,
+        'lambda_additional': lambda_additional,
+        'api_gateways': api_gateways,
+        'ecr_repositories': ecr_repositories,
+        'environments': total_environments
+    }
+    
+    st.session_state.infrastructure_data = infrastructure_data
     
     st.markdown("---")
     
-    # Calculate enterprise metrics
-    total_activities = sum([cat_data['activities'] for cat_data in categories.values()])
-    avg_automation_potential = np.mean([cat_data['automation_potential'] for cat_data in categories.values()])
+    # Team Resource Configuration
+    st.subheader("👥 Team Resource Configuration")
+    st.markdown("**Both BCO and DBO teams operate from India (24x7) and USA (Business Hours)**")
     
-    # Executive KPI dashboard
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Current Total FTE", current_total_fte, help="Total full-time equivalents across all teams")
-    
+        st.markdown("**BCO Team - India (24x7)**")
+        bco_india_size = st.number_input("BCO India Team", min_value=1, max_value=30, value=4, key="bco_india")
+        
     with col2:
-        projected_baseline = int(current_total_fte * 1.68)  # 68% growth over 5 years
-        st.metric("Year 5 Baseline Growth", projected_baseline, f"+{projected_baseline - current_total_fte}")
-    
+        st.markdown("**BCO Team - USA**") 
+        bco_usa_size = st.number_input("BCO USA Team", min_value=1, max_value=30, value=2, key="bco_usa")
+        
     with col3:
-        projected_optimized = int(current_total_fte * 1.18)  # 18% growth with automation
-        st.metric("Year 5 Optimized", projected_optimized, f"+{projected_optimized - current_total_fte}")
-    
+        st.markdown("**DBO Team - India (24x7)**")
+        dbo_india_size = st.number_input("DBO India Team", min_value=1, max_value=30, value=4, key="dbo_india")
+        
     with col4:
-        fte_avoidance = projected_baseline - projected_optimized
-        st.metric("FTE Avoidance", fte_avoidance, f"{(fte_avoidance/projected_baseline)*100:.1f}%")
+        st.markdown("**DBO Team - USA**")
+        dbo_usa_size = st.number_input("DBO USA Team", min_value=1, max_value=30, value=3, key="dbo_usa")
     
-    with col5:
-        cost_avoidance_5yr = fte_avoidance * 130 * 5  # $130K average cost per FTE
-        st.metric("5-Year Cost Avoidance", f"${cost_avoidance_5yr/1000:.1f}M")
+    # Calculate totals
+    bco_total = bco_india_size + bco_usa_size
+    dbo_total = dbo_india_size + dbo_usa_size
+    total_fte = bco_total + dbo_total
     
-    with col6:
-        productivity_gain = avg_automation_potential * 100
-        st.metric("Automation Potential", f"{productivity_gain:.0f}%")
+    # Update session state
+    st.session_state.teams['BCO']['current_size'] = bco_total
+    st.session_state.teams['BCO']['india_size'] = bco_india_size
+    st.session_state.teams['BCO']['usa_size'] = bco_usa_size
+    st.session_state.teams['DBO']['current_size'] = dbo_total
+    st.session_state.teams['DBO']['india_size'] = dbo_india_size
+    st.session_state.teams['DBO']['usa_size'] = dbo_usa_size
+    
+    # Team summary
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("BCO Total", bco_total, help="India (24x7) + USA teams")
+    with col2:
+        st.metric("DBO Total", dbo_total, help="India (24x7) + USA teams") 
+    with col3:
+        st.metric("Total FTE", total_fte)
+    with col4:
+        st.metric("24x7 Coverage", bco_india_size + dbo_india_size, help="India-based 24x7 operations")
+    
+    # Calculate infrastructure-based resource requirements
+    team_sizes = {'BCO': bco_total, 'DBO': dbo_total}
+    if st.button("🔄 Calculate Resource Requirements", type="primary"):
+        with st.spinner("Analyzing infrastructure and calculating optimal resource requirements..."):
+            time.sleep(2.0)
+            
+            infrastructure_analysis = calculate_infrastructure_based_resources(infrastructure_data, team_sizes)
+            st.session_state.infrastructure_analysis = infrastructure_analysis
+            
+            st.success("✅ Infrastructure analysis completed!")
+    
+    st.markdown("---")
+    
+    # Infrastructure-based analysis results
+    if 'infrastructure_analysis' in st.session_state:
+        analysis = st.session_state.infrastructure_analysis
+        
+        st.subheader("📊 Infrastructure-Based Resource Analysis")
+        
+        # Key metrics
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        
+        with col1:
+            st.metric("Infrastructure Hours/Month", f"{analysis['total_infrastructure_hours']:.0f}")
+        
+        with col2:
+            st.metric("24x7 Adjusted Hours", f"{analysis['adjusted_hours_24x7']:.0f}", 
+                     help="Reduced by 30% due to 24x7 India operations")
+        
+        with col3:
+            st.metric("Required FTE", f"{analysis['required_total_fte']:.1f}")
+        
+        with col4:
+            current_vs_required = analysis['fte_gap']
+            delta_color = "inverse" if current_vs_required < 0 else "normal"
+            st.metric("FTE Gap", f"{current_vs_required:+.1f}", 
+                     delta_color=delta_color,
+                     help="Negative = overstaffed, Positive = understaffed")
+        
+        with col5:
+            st.metric("Optimal BCO", f"{analysis['optimal_bco_fte']:.1f}")
+        
+        with col6:
+            st.metric("Optimal DBO", f"{analysis['optimal_dbo_fte']:.1f}")
+        
+        # Detailed breakdown
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Current vs Optimal Team Sizes")
+            
+            comparison_data = {
+                'Team': ['BCO', 'DBO'],
+                'Current FTE': [analysis['current_bco_fte'], analysis['current_dbo_fte']],
+                'Optimal FTE': [analysis['optimal_bco_fte'], analysis['optimal_dbo_fte']],
+                'Gap': [analysis['bco_fte_gap'], analysis['dbo_fte_gap']]
+            }
+            
+            comparison_df = pd.DataFrame(comparison_data)
+            st.dataframe(comparison_df, use_container_width=True)
+            
+        with col2:
+            st.subheader("Infrastructure Workload Breakdown")
+            
+            breakdown_data = []
+            for service, details in analysis['detailed_breakdown'].items():
+                breakdown_data.append({
+                    'Service': service.replace('_', ' ').title(),
+                    'Count': details['count'],
+                    'Hours/Unit': details['hours_per_unit'],
+                    'Total Hours': details['total_hours']
+                })
+            
+            breakdown_df = pd.DataFrame(breakdown_data)
+            breakdown_df = breakdown_df.sort_values('Total Hours', ascending=False)
+            st.dataframe(breakdown_df, use_container_width=True)
+        
+        # 24x7 Operations Impact
+        st.subheader("🌍 24x7 Operations Impact Analysis")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**Follow-the-Sun Benefits:**")
+            st.markdown("• 30% efficiency gain from 24x7 coverage")
+            st.markdown("• Faster incident response (India overnight)")
+            st.markdown("• Continuous monitoring and maintenance")
+            st.markdown("• Reduced weekend/holiday premium costs")
+        
+        with col2:
+            india_fte = bco_india_size + dbo_india_size
+            usa_fte = bco_usa_size + dbo_usa_size
+            
+            fig = px.pie(
+                values=[india_fte, usa_fte],
+                names=['India (24x7)', 'USA (Business Hours)'],
+                title="FTE Distribution by Location"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col3:
+            st.markdown("**Cost Optimization:**")
+            india_cost_advantage = (usa_fte * 130 - india_fte * 45) * 0.6  # 40% cost advantage
+            st.metric("Annual Cost Savings", f"${india_cost_advantage:.0f}K", 
+                     help="Savings from India operations cost advantage")
+            
+            coverage_premium_avoided = total_fte * 20  # $20K/FTE avoided premium
+            st.metric("24x7 Premium Avoided", f"${coverage_premium_avoided:.0f}K",
+                     help="Cost of 24x7 coverage if done in USA only")
+    
+    else:
+        # Calculate basic metrics without infrastructure analysis
+        current_total_fte = total_fte
+        total_activities = sum([cat_data['activities'] for cat_data in categories.values()])
+        avg_automation_potential = np.mean([cat_data['automation_potential'] for cat_data in categories.values()])
+        
+        # Executive KPI dashboard
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        
+        with col1:
+            st.metric("Current Total FTE", current_total_fte, help="Total full-time equivalents across all teams")
+        
+        with col2:
+            projected_baseline = int(current_total_fte * 1.68)  # 68% growth over 5 years
+            st.metric("Year 5 Baseline Growth", projected_baseline, f"+{projected_baseline - current_total_fte}")
+        
+        with col3:
+            projected_optimized = int(current_total_fte * 1.18)  # 18% growth with automation
+            st.metric("Year 5 Optimized", projected_optimized, f"+{projected_optimized - current_total_fte}")
+        
+        with col4:
+            fte_avoidance = projected_baseline - projected_optimized
+            st.metric("FTE Avoidance", fte_avoidance, f"{(fte_avoidance/projected_baseline)*100:.1f}%")
+        
+        with col5:
+            cost_avoidance_5yr = fte_avoidance * 130 * 5  # $130K average cost per FTE
+            st.metric("5-Year Cost Avoidance", f"${cost_avoidance_5yr/1000:.1f}M")
+        
+        with col6:
+            productivity_gain = avg_automation_potential * 100
+            st.metric("Automation Potential", f"{productivity_gain:.0f}%")
     
     st.markdown("---")
     
@@ -2545,11 +2813,26 @@ with tab11:
         
         if st.button("🚀 Generate Financial Model", type="primary"):
             with st.spinner("Calculating comprehensive financial model..."):
-                financial_model = calculate_comprehensive_financial_model(
-                    investment_params, business_params, risk_params
-                )
-                st.session_state.financial_model = financial_model
-                st.success("✅ Financial model generated successfully!")
+                if 'infrastructure_analysis' in st.session_state:
+                    financial_model = calculate_comprehensive_financial_model(
+                        investment_params, business_params, risk_params, 
+                        st.session_state.infrastructure_analysis
+                    )
+                    st.session_state.financial_model = financial_model
+                    st.success("✅ Infrastructure-based financial model generated successfully!")
+                else:
+                    st.warning("⚠️ Please run infrastructure analysis first in the Executive Dashboard tab")
+                    # Fallback to basic calculation
+                    basic_analysis = {
+                        'current_total_fte': st.session_state.teams['BCO']['current_size'] + st.session_state.teams['DBO']['current_size'],
+                        'total_infrastructure_hours': 800,  # Default estimate
+                        'detailed_breakdown': {}
+                    }
+                    financial_model = calculate_comprehensive_financial_model(
+                        investment_params, business_params, risk_params, basic_analysis
+                    )
+                    st.session_state.financial_model = financial_model
+                    st.info("📊 Basic financial model generated. Run infrastructure analysis for more accuracy.")
     
     with subtab2:
         st.subheader("5-Year Financial Model Results")
