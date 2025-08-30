@@ -1897,7 +1897,7 @@ with tab1:
     
     with col1:
         st.subheader("Activity Distribution by Category")
-        
+        total_activities = sum([cat_data['activities'] for cat_data in categories.values()])
         category_activities = [cat_data['activities'] for cat_data in categories.values()]
         category_names = list(categories.keys())
         
