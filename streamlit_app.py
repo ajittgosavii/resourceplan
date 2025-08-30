@@ -1636,6 +1636,12 @@ with tab1:
     dbo_total = dbo_india_size + dbo_usa_size
     total_fte = bco_total + dbo_total
     
+    # Calculate effective FTE considering different shift hours
+    # India: 8.8 hours/day, USA: 8 hours/day
+    india_effective_fte = (bco_india_size + dbo_india_size) * (8.8/8)
+    usa_effective_fte = (bco_usa_size + dbo_usa_size) * (8/8)  # No change for USA
+    total_effective_fte = india_effective_fte + usa_effective_fte
+    
     # Update session state
     st.session_state.teams['BCO']['current_size'] = bco_total
     st.session_state.teams['BCO']['india_size'] = bco_india_size
@@ -1645,7 +1651,7 @@ with tab1:
     st.session_state.teams['DBO']['usa_size'] = dbo_usa_size
     
     # Team summary
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         st.metric("BCO Total", bco_total, help="India (24x7) + USA teams")
@@ -1654,8 +1660,11 @@ with tab1:
     with col3:
         st.metric("Total FTE", total_fte)
     with col4:
+    st.metric("Effective FTE", f"{total_effective_fte:.1f}", 
+             help="Adjusted for India (8.8h) vs USA (8h) shifts")
+    with col5:
         st.metric("24x7 Coverage", bco_india_size + dbo_india_size, help="India-based 24x7 operations")
-    
+        
     # Calculate infrastructure-based resource requirements
     team_sizes = {'BCO': bco_total, 'DBO': dbo_total}
     if st.button("🔄 Calculate Resource Requirements", type="primary"):
@@ -1807,11 +1816,12 @@ with tab1:
         st.subheader("5-Year Strategic Transformation")
         
         years = ['2025', '2026', '2027', '2028', '2029']
-        bco_operational = [int(bco_size * (0.8 - i * 0.12)) for i in range(5)]
-        dbo_operational = [int(dbo_size * (0.8 - i * 0.12)) for i in range(5)]
-        bco_strategic = [int(bco_size * (0.2 + i * 0.12)) for i in range(5)]
-        dbo_strategic = [int(dbo_size * (0.2 + i * 0.12)) for i in range(5)]
-        
+        bco_operational = [int(bco_total * (0.8 - i * 0.12)) for i in range(5)]
+        dbo_operational = [int(dbo_total * (0.8 - i * 0.12)) for i in range(5)]
+    
+        bco_strategic = [int(bco_total * (0.2 + i * 0.12)) for i in range(5)]
+        dbo_strategic = [int(dbo_total * (0.2 + i * 0.12)) for i in range(5)]
+    
         fig = go.Figure()
         fig.add_trace(go.Bar(x=years, y=bco_operational, name='BCO Operational Work', 
                            marker_color='#FF6B6B'))
@@ -1905,7 +1915,7 @@ with tab1:
     with col2:
         st.subheader("Team Distribution by Location")
         
-        location_fte = {'India': bco_size, 'USA': dbo_size}
+        location_fte = {'India': bco_india_size + dbo_india_size, 'USA': bco_usa_size + dbo_usa_size}
         
         fig = px.pie(
             values=list(location_fte.values()),
