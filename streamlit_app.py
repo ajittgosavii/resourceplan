@@ -892,7 +892,7 @@ if page == "🤖 Claude AI Assistant":
             for metric, value in ai_metrics.items():
                 if 'Time' in metric:
                     st.metric(metric, f"{value:.1f}s")
-                elif 'Impact' in metric or 'Accuracy' in metric or 'Rate' in metric or 'Satisfaction' in metric or 'Score' in metric:
+                elif any(keyword in metric for keyword in ['Impact', 'Accuracy', 'Rate', 'Satisfaction', 'Score']):
                     st.metric(metric, f"{value:.1f}%")
                 else:
                     st.metric(metric, f"{value:.1f}")
