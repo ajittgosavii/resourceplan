@@ -36,7 +36,9 @@ def validate_input(value: any, min_val: float = None, max_val: float = None) -> 
         logger.error(f"Input validation error: {e}")
         return False
 
-def safe_string_to_numeric(value_string: str, remove_chars: List[str] = ['
+def safe_string_to_numeric(value_string: str, remove_chars: List[str] = None) -> float:
+    if remove_chars is None:
+        remove_chars = ['$', 'K', '%']
 
 # Initialize session state for enterprise data management
 def initialize_session_state():
