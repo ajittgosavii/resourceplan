@@ -519,9 +519,12 @@ def calculate_infrastructure_based_resources(infrastructure_data, team_sizes):
         'databases_ec2': 8.0,  # 8 hours for EC2 databases (more maintenance)
         's3_buckets': 0.5,  # 0.5 hours per S3 bucket
         'lambda_functions': 1.0,  # 1 hour per Lambda function
+        'lambda_additional': 0.5,  # 0.5 hours per Lambda layer/version
         'api_gateways': 2.0,  # 2 hours per API Gateway
         'ecr_repositories': 1.5,  # 1.5 hours per ECR repository
-        'environments': 10.0  # 10 hours per environment (deployment, monitoring)
+        'environments': 10.0,  # 10 hours per environment (deployment, monitoring)
+        'ebs_volume_tb': 0.8,  # 0.8 hours per TB of EBS (snapshots, monitoring, optimization)
+        'efs_volume_tb': 1.2   # 1.2 hours per TB of EFS (access points, performance tuning)
     }
     
     # Calculate total monthly hours needed
@@ -636,6 +639,13 @@ def calculate_comprehensive_financial_model(investment_params, business_params, 
                    infrastructure_analysis['detailed_breakdown'].get('databases_ec2', {}).get('count', 0))
         db_savings = db_total * 1500 * (1 + year * 0.3)  # $1.5K per database, growing
         
+        # Storage automation savings
+        ebs_volume = infrastructure_analysis['detailed_breakdown'].get('ebs_volume_tb', {}).get('count', 0)
+        ebs_savings = ebs_volume * 500 * (1 + year * 0.15)  # $500 per TB EBS (snapshot automation, optimization)
+        
+        efs_volume = infrastructure_analysis['detailed_breakdown'].get('efs_volume_tb', {}).get('count', 0)
+        efs_savings = efs_volume * 800 * (1 + year * 0.18)  # $800 per TB EFS (access point automation, performance tuning)
+        
         # 4. Operational efficiency gains
         efficiency_multiplier = 1 + (year * 0.15)  # 15% annual efficiency improvement
         operational_savings = current_revenue * 1000 * (ops_impact/100) * efficiency_multiplier
@@ -648,7 +658,8 @@ def calculate_comprehensive_financial_model(investment_params, business_params, 
         incident_cost_avoidance = (200 + year * 40) * 1000  # Higher savings with 24x7 coverage
         
         total_savings = (fte_savings + follow_sun_savings * 12 + ec2_savings + 
-                        eks_savings + db_savings + operational_savings + incident_cost_avoidance)
+                        eks_savings + db_savings + ebs_savings + efs_savings + 
+                        operational_savings + incident_cost_avoidance)
         
         total_revenue_impact = revenue_uplift
         
@@ -1564,7 +1575,8 @@ with tab1:
         paas_databases = st.number_input("5. PaaS Databases (RDS, Aurora)", min_value=0, value=18, key="paas_db")
         databases_ec2 = st.number_input("6. Databases on EC2", min_value=0, value=6, key="db_ec2")
         s3_buckets = st.number_input("7. S3 buckets", min_value=0, value=45, key="s3_buckets")
-        ecr_repositories = st.number_input("11. ECR repositories", min_value=0, value=20, key="ecr_repos")
+        ebs_volume_tb = st.number_input("13. EBS Volume (TB)", min_value=0.0, value=50.0, step=0.5, key="ebs_volume")
+        efs_volume_tb = st.number_input("14. EFS Volume (TB)", min_value=0.0, value=15.0, step=0.5, key="efs_volume")
         
     with col3:
         st.markdown("**Serverless & API**")
@@ -1572,6 +1584,7 @@ with tab1:
         # Note: Item 9 was duplicate "Serverless PaaS: Lambda" - treating as Lambda layers or additional Lambda services
         lambda_additional = st.number_input("9. Lambda layers/versions", min_value=0, value=15, key="lambda_additional")
         api_gateways = st.number_input("10. API Gateways", min_value=0, value=8, key="api_gw")
+        ecr_repositories = st.number_input("11. ECR repositories", min_value=0, value=20, key="ecr_repos")
         total_environments = st.number_input("12. Total environments (Dev/Test/Prod)", min_value=1, value=9, key="environments")
     
     # Store infrastructure data
@@ -1587,7 +1600,9 @@ with tab1:
         'lambda_additional': lambda_additional,
         'api_gateways': api_gateways,
         'ecr_repositories': ecr_repositories,
-        'environments': total_environments
+        'environments': total_environments,
+        'ebs_volume_tb': ebs_volume_tb,
+        'efs_volume_tb': efs_volume_tb
     }
     
     st.session_state.infrastructure_data = infrastructure_data
