@@ -1663,7 +1663,7 @@ if selected_page == "🏢 Executive Dashboard":
             color=category_activities,
             color_continuous_scale="Viridis"
         )
-        fig.update_xaxis(tickangle=45)
+        fig.update_xaxes(tickangle=45)
         fig.update_layout(xaxis_title="Category", yaxis_title="Number of Activities")
         st.plotly_chart(fig, use_container_width=True)
     
