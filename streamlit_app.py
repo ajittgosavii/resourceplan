@@ -7,7 +7,6 @@ import numpy as np
 from datetime import datetime, timedelta, date
 import json
 import logging
-from typing import Dict, List, Tuple, Optional
 import hashlib
 
 # Configure logging for enterprise monitoring
@@ -23,7 +22,7 @@ st.set_page_config(
 )
 
 # Security and data validation
-def validate_input(value: any, min_val: float = None, max_val: float = None) -> bool:
+def validate_input(value, min_val=None, max_val=None):
     """Enterprise-grade input validation"""
     try:
         if isinstance(value, (int, float)):
@@ -36,9 +35,7 @@ def validate_input(value: any, min_val: float = None, max_val: float = None) -> 
         logger.error(f"Input validation error: {e}")
         return False
 
-def safe_string_to_numeric(value_string: str, remove_chars: List[str] = None) -> float:
-    if remove_chars is None:
-        remove_chars = ['$', 'K', '%']
+def safe_string_to_numeric(value_string: str, remove_chars: List[str] = ['
 
 # Initialize session state for enterprise data management
 def initialize_session_state():
@@ -546,7 +543,7 @@ def get_claude_ai_capabilities():
         }
     }
 
-def simulate_claude_ai_analysis(query_type: str, input_data: Dict) -> Dict:
+def simulate_claude_ai_analysis(query_type, input_data):
     """Simulate Claude AI analysis and recommendations"""
     
     ai_responses = {
@@ -953,10 +950,14 @@ if page == "🤖 Claude AI Assistant":
 
 # Remove DevOps Maturity section and replace references
 
-def calculate_enterprise_lever_impact(base_workload: float, year: int, 
-                                    automation_rate: float, genai_rate: float, 
-                                    aws_integration_rate: float, sre_maturity: float, 
-                                    devops_maturity: float) -> Dict[str, float]:
+def calculate_data_hash(data):
+    """Generate hash for data integrity verification"""
+    return hashlib.md5(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+def calculate_enterprise_lever_impact(base_workload, year, 
+                                    automation_rate, genai_rate, 
+                                    aws_integration_rate, sre_maturity, 
+                                    devops_maturity):
     """Enterprise-grade lever impact calculation with compound effects"""
     
     # Traditional automation (Infrastructure as Code, basic automation)
@@ -1542,17 +1543,18 @@ elif page == "📊 Enterprise Metrics":
                 'Cost per Workload': {'current': 1250, 'target': 800, 'unit': '$/month'}
             }
             
-            kpi_df = pd.DataFrame([
+            # Format and display values safely
+            kpi_display_df = pd.DataFrame([
                 {
                     'KPI': kpi,
                     'Current': f"{details['current']}{details['unit']}",
                     'Target': f"{details['target']}{details['unit']}",
-                    'Gap %': abs(details['target'] - details['current']) / details['current'] * 100
+                    'Gap %': f"{abs(details['target'] - details['current']) / details['current'] * 100:.1f}%"
                 }
                 for kpi, details in operational_kpis.items()
             ])
             
-            st.dataframe(kpi_df, use_container_width=True)
+            st.dataframe(kpi_display_df, use_container_width=True)
         
         with col2:
             # KPI trend visualization
@@ -2073,19 +2075,19 @@ elif page == "🧠 Gen AI Roadmap":
     with tab2:
         st.subheader("Gen AI Implementation Roadmap")
         
-        # Comprehensive implementation timeline with Claude AI integration
-        genai_timeline = [
-            {'Quarter': 'Q1 2025', 'Initiative': 'Claude AI Platform Integration & Setup', 'Team': 'CLD + SEC', 'Status': 'Active', 'Budget': '$120K'},
-            {'Quarter': 'Q2 2025', 'Initiative': 'Claude AI Resource Planning Assistant', 'Team': 'CLD + HOP', 'Status': 'Planning', 'Budget': '$80K'},
-            {'Quarter': 'Q3 2025', 'Initiative': 'AI-Powered Documentation & Analysis', 'Team': 'All Teams', 'Status': 'Planned', 'Budget': '$60K'},
-            {'Quarter': 'Q4 2025', 'Initiative': 'Claude AI Incident Response Integration', 'Team': 'SRE + CLD', 'Status': 'Planned', 'Budget': '$100K'},
-            {'Quarter': 'Q1 2026', 'Initiative': 'Predictive Analytics with Claude AI', 'Team': 'SRE + BCO', 'Status': 'Future', 'Budget': '$120K'},
-            {'Quarter': 'Q2 2026', 'Initiative': 'Claude AI Security Assessment Automation', 'Team': 'SEC + CLD', 'Status': 'Future', 'Budget': '$140K'},
-            {'Quarter': 'Q3 2026', 'Initiative': 'Full Claude AI Platform Integration', 'Team': 'All Teams', 'Status': 'Future', 'Budget': '$110K'},
-            {'Quarter': 'Q4 2026', 'Initiative': 'Advanced Claude AI Capabilities & Governance', 'Team': 'All Teams', 'Status': 'Future', 'Budget': '$90K'}
+        # Timeline with safe budget handling
+        timeline_data = [
+            {'Quarter': 'Q1 2025', 'Initiative': 'Claude AI Platform Integration & Setup', 'Team': 'CLD + SEC', 'Status': 'Active', 'Budget': 120},
+            {'Quarter': 'Q2 2025', 'Initiative': 'Claude AI Resource Planning Assistant', 'Team': 'CLD + HOP', 'Status': 'Planning', 'Budget': 80},
+            {'Quarter': 'Q3 2025', 'Initiative': 'AI-Powered Documentation & Analysis', 'Team': 'All Teams', 'Status': 'Planned', 'Budget': 60},
+            {'Quarter': 'Q4 2025', 'Initiative': 'Claude AI Incident Response Integration', 'Team': 'SRE + CLD', 'Status': 'Planned', 'Budget': 100},
+            {'Quarter': 'Q1 2026', 'Initiative': 'Predictive Analytics with Claude AI', 'Team': 'SRE + BCO', 'Status': 'Future', 'Budget': 120},
+            {'Quarter': 'Q2 2026', 'Initiative': 'Claude AI Security Assessment Automation', 'Team': 'SEC + CLD', 'Status': 'Future', 'Budget': 140},
+            {'Quarter': 'Q3 2026', 'Initiative': 'Full Claude AI Platform Integration', 'Team': 'All Teams', 'Status': 'Future', 'Budget': 110},
+            {'Quarter': 'Q4 2026', 'Initiative': 'Advanced Claude AI Capabilities & Governance', 'Team': 'All Teams', 'Status': 'Future', 'Budget': 90}
         ]
         
-        timeline_df = pd.DataFrame(genai_timeline)
+        timeline_df = pd.DataFrame(timeline_data)
         
         # Enhanced timeline visualization with budget
         fig = px.bar(timeline_df, x='Quarter', y='Budget', color='Status',
@@ -2289,10 +2291,17 @@ elif page == "💰 Financial Analysis":
         
         financial_df = pd.DataFrame(financial_model)
         
-        # Display comprehensive financial model
-        display_columns = ['Year', 'Investment', 'Direct_Savings', 'Efficiency_Gains', 
-                          'Revenue_Impact', 'Net_Benefit', 'ROI']
-        st.dataframe(financial_df[display_columns].round(0), use_container_width=True)
+            # Display comprehensive financial model with safe formatting
+            display_columns = ['Year', 'Investment', 'Direct_Savings', 'Efficiency_Gains', 
+                              'Revenue_Impact', 'Net_Benefit', 'ROI']
+            
+            # Format financial data for display
+            formatted_financial_df = financial_df[display_columns].copy()
+            for col in ['Investment', 'Direct_Savings', 'Efficiency_Gains', 'Revenue_Impact', 'Net_Benefit']:
+                formatted_financial_df[col] = formatted_financial_df[col].round(0).astype(int)
+            formatted_financial_df['ROI'] = formatted_financial_df['ROI'].round(1)
+            
+            st.dataframe(formatted_financial_df, use_container_width=True)
     
     with tab2:
         st.subheader("ROI Analysis & Payback Calculation")
