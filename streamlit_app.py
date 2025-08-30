@@ -1660,8 +1660,8 @@ with tab1:
     with col3:
         st.metric("Total FTE", total_fte)
     with col4:
-    st.metric("Effective FTE", f"{total_effective_fte:.1f}", 
-             help="Adjusted for India (8.8h) vs USA (8h) shifts")
+        st.metric("Effective FTE", f"{total_effective_fte:.1f}", 
+                help="Adjusted for India (8.8h) vs USA (8h) shifts")
     with col5:
         st.metric("24x7 Coverage", bco_india_size + dbo_india_size, help="India-based 24x7 operations")
         
