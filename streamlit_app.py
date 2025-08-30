@@ -35,9 +35,7 @@ def validate_input(value, min_val=None, max_val=None):
         logger.error(f"Input validation error: {e}")
         return False
 
-def safe_string_to_numeric(value_string: str, remove_chars: List[str] = None) -> float:
-    if remove_chars is None:
-        remove_chars = ['$', 'K', '%']
+def safe_string_to_numeric(value_string: str, remove_chars: List[str] = ['
 
 # Initialize session state for enterprise data management
 def initialize_session_state():
@@ -222,7 +220,8 @@ def get_sre_metrics():
         with col1:
             st.markdown("**Implementation Costs by Year**")
             
-            aws_costs_detailed = {
+            # AWS integration costs with numeric values
+            aws_costs_by_year = {
                 '2025': {'Setup': 120, 'Licenses': 80, 'Training': 60, 'Integration': 100},
                 '2026': {'Setup': 80, 'Licenses': 120, 'Training': 40, 'Integration': 150},
                 '2027': {'Setup': 40, 'Licenses': 150, 'Training': 30, 'Integration': 120},
@@ -231,7 +230,7 @@ def get_sre_metrics():
             }
             
             cost_breakdown = []
-            for year, costs in aws_costs_detailed.items():
+            for year, costs in aws_costs_by_year.items():
                 for category, amount in costs.items():
                     cost_breakdown.append({'Year': year, 'Category': category, 'Amount': amount})
             
@@ -264,10 +263,10 @@ def get_sre_metrics():
                         title="AWS Integration Benefits by Type ($K)")
             st.plotly_chart(fig, use_container_width=True)
         
-        # AWS integration ROI summary
-        total_costs = sum([sum(costs.values()) for costs in aws_costs_detailed.values()])
+        # AWS integration ROI summary with safe calculations
+        total_costs = sum([sum(costs.values()) for costs in aws_costs_by_year.values()])
         total_benefits = sum(operational_savings) + sum(efficiency_gains) + sum(risk_reduction_value)
-        aws_roi = (total_benefits - total_costs) / total_costs * 100
+        aws_roi = (total_benefits - total_costs) / total_costs * 100 if total_costs > 0 else 0
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -2841,33 +2840,33 @@ if st.sidebar.button("📅 Schedule Automated Reports"):
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔍 System Health Monitor")
 
-# Enterprise system health indicators
-system_health_metrics = {
-    'Data Integrity': np.random.choice([96, 97, 98, 99, 99]),
-    'Application Performance': np.random.choice([94, 96, 97, 98]),
-    'Security Posture': np.random.choice([91, 93, 95, 97, 98]),
-    'Compliance Status': np.random.choice([95, 97, 98, 99]),
-    'API Availability': np.random.choice([98, 99, 99, 99]),
-    'User Satisfaction': np.random.choice([87, 89, 92, 94, 96])
-}
+        # System health monitoring with safe string handling
+        system_health_metrics = {
+            'Data Integrity': np.random.choice([96, 97, 98, 99, 99]),
+            'Application Performance': np.random.choice([94, 96, 97, 98]),
+            'Security Posture': np.random.choice([91, 93, 95, 97, 98]),
+            'Compliance Status': np.random.choice([95, 97, 98, 99]),
+            'API Availability': np.random.choice([98, 99, 99, 99]),
+            'User Satisfaction': np.random.choice([87, 89, 92, 94, 96])
+        }
 
-for metric, score in system_health_metrics.items():
-    if score >= 95:
-        delta_color = "normal"
-        delta_value = f"+{np.random.randint(1, 3)}"
-    elif score >= 90:
-        delta_color = "off" 
-        delta_value = f"+{np.random.randint(0, 2)}"
-    else:
-        delta_color = "inverse"
-        delta_value = f"{np.random.randint(-2, 1)}"
-    
-    st.sidebar.metric(
-        metric, 
-        f"{score}%", 
-        delta=delta_value,
-        help=f"Enterprise benchmark: 95%+ target"
-    )
+        for metric, score in system_health_metrics.items():
+            if score >= 95:
+                delta_color = "normal"
+                delta_value = f"+{np.random.randint(1, 3)}"
+            elif score >= 90:
+                delta_color = "off" 
+                delta_value = f"+{np.random.randint(0, 2)}"
+            else:
+                delta_color = "inverse"
+                delta_value = f"{np.random.randint(-2, 1)}"
+            
+            st.sidebar.metric(
+                metric, 
+                f"{score}%", 
+                delta=delta_value,
+                help="Enterprise benchmark: 95%+ target"
+            )
 
 # Version control and data lineage
 st.sidebar.markdown("---")
@@ -3268,17 +3267,23 @@ else:
 # Audit logging
 generate_audit_log_entry("dashboard_access", user_role, f"Accessed {page}")
 
-# Data versioning and backup
-data_hash = calculate_data_hash(enterprise_data)
-st.sidebar.caption(f"🔑 Data Hash: {data_hash[:8]}...")
+# Data versioning and backup with safe hash calculation
+try:
+    data_hash = calculate_data_hash(enterprise_data)
+    hash_display = data_hash[:8]
+except Exception:
+    hash_display = "unknown"
+
+st.sidebar.caption(f"🔑 Data Hash: {hash_display}...")
 
 # Export and backup controls
 if user_role in ["Admin", "Manager"]:
     st.sidebar.markdown("---")
     if st.sidebar.button("💾 Backup Current State"):
-        backup_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        st.sidebar.success(f"✅ Backup created: backup_{backup_timestamp}")
-        generate_audit_log_entry("data_backup", user_role, f"Created backup_{backup_timestamp}")
+        backup_time = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_name = f"backup_{backup_time}"
+        st.sidebar.success(f"✅ Backup created: {backup_name}")
+        generate_audit_log_entry("data_backup", user_role, backup_name)
 
 # Enterprise support and documentation
 st.sidebar.markdown("---")
